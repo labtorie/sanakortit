@@ -104,6 +104,7 @@ main { flex: 1; min-height: 0; position: relative; }
 .dots i.on { background: var(--good); }
 .back .dots i { background: color-mix(in srgb, var(--back-ink) 25%, transparent); }
 .back .dots i.on { background: var(--good); }
+.item .dots i.q { background: var(--quiz); }
 .speak { border: 0; background: var(--surface-2); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--ink); }
 .back .speak { background: color-mix(in srgb, var(--back-ink) 14%, transparent); color: var(--back-ink); }
 .tag { font-size: .68rem; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); letter-spacing: .06em; }
@@ -714,6 +715,14 @@ main { flex: 1; min-height: 0; position: relative; }
   src.addEventListener('input', () => { if (saveBtn.dataset.confirm) { saveBtn.dataset.confirm = ''; saveBtn.textContent = 'Сохранить карточку'; } });
 
   // ---------- list ----------
+  // 3 dots: green = card streak, then blue = quiz streak beyond it (one card guess outweighs one quiz guess), grey = rest
+  function mixedDots(c) {
+    const g = Math.min(c.box || 0, LEARNED), filled = Math.min(Math.max(c.box || 0, c.qbox || 0), LEARNED);
+    const d = document.createElement('div'); d.className = 'dots';
+    d.setAttribute('aria-label', `Карточки: ${c.box || 0} подряд, тест: ${c.qbox || 0} подряд`);
+    for (let i = 0; i < LEARNED; i++) { const x = document.createElement('i'); if (i < g) x.className = 'on'; else if (i < filled) x.className = 'q'; d.append(x); }
+    return d;
+  }
   function renderList() {
     const q = $('#search').value.trim().toLowerCase();
     const list = $('#list'); list.innerHTML = '';
@@ -730,8 +739,7 @@ main { flex: 1; min-height: 0; position: relative; }
       const ru = document.createElement('span'); ru.className = 'ru'; ru.textContent = c.ru;
       t.append(fi, ru); b.append(t);
       if (isLearned(c)) { const s = document.createElement('span'); s.className = 'badge'; s.textContent = 'выучено'; b.append(s); }
-      else if (isQuizKnown(c)) { const s = document.createElement('span'); s.className = 'badge q'; s.textContent = 'тест'; b.append(s); }
-      else b.append(dotsEl(c.box));
+      else b.append(mixedDots(c));
       b.onclick = () => openEdit(c.id); list.append(b);
     });
   }

@@ -31,6 +31,7 @@
   --back: #13233A;
   --back-ink: #EEF3F8;
   --good: #2A8A5E;
+  --quiz: #3D7BC9;
   --bad: #CC463C;
   --shadow: 0 1px 2px rgba(19,35,58,.08), 0 10px 30px rgba(19,35,58,.10);
   --f-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
@@ -38,11 +39,11 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0C141E; --surface: #152131; --surface-2: #1C2A3C; --ink: #E5ECF3; --muted: #8B9AAC; --line: #263548;
-  --accent: #F0A243; --accent-ink: #1A1206; --back: #22344D; --back-ink: #F1F5F9; --good: #47B585; --bad: #E66A5F;
+  --accent: #F0A243; --accent-ink: #1A1206; --back: #22344D; --back-ink: #F1F5F9; --good: #47B585; --quiz: #6FA6EC; --bad: #E66A5F;
   --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.35); color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #0C141E; --surface: #152131; --surface-2: #1C2A3C; --ink: #E5ECF3; --muted: #8B9AAC; --line: #263548;
-  --accent: #F0A243; --accent-ink: #1A1206; --back: #22344D; --back-ink: #F1F5F9; --good: #47B585; --bad: #E66A5F;
+  --accent: #F0A243; --accent-ink: #1A1206; --back: #22344D; --back-ink: #F1F5F9; --good: #47B585; --quiz: #6FA6EC; --bad: #E66A5F;
   --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.35); color-scheme: dark; }
 
 html { height: 100%; box-sizing: border-box; } body { height: 100%; }
@@ -62,7 +63,13 @@ button { cursor: pointer; }
 .progress .row { display: flex; justify-content: space-between; font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .progress .row b { color: var(--ink); font-weight: 600; }
 .bar { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
-.bar i { display: block; height: 100%; width: 0; background: var(--good); border-radius: 3px; transition: width .4s ease; }
+.bar { display: flex; }
+.bar i { display: block; height: 100%; width: 0; background: var(--good); transition: width .4s ease; }
+.bar i.q { background: var(--quiz); }
+.lg { display: inline-flex; align-items: center; gap: 5px; }
+.lg + .lg { margin-left: 10px; }
+.sw { width: 8px; height: 8px; border-radius: 2px; background: var(--good); display: inline-block; }
+.sw.q { background: var(--quiz); }
 
 main { flex: 1; min-height: 0; position: relative; }
 .view { position: absolute; inset: 0; overflow-y: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 4px 16px; }
@@ -86,7 +93,7 @@ main { flex: 1; min-height: 0; position: relative; }
 .face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 22px; box-shadow: var(--shadow); display: flex; flex-direction: column; padding: 18px 20px; overflow: hidden; }
 .front { background: var(--surface); }
 .back { background: var(--back); color: var(--back-ink); transform: rotateY(180deg); }
-.face .meta { display: flex; justify-content: space-between; align-items: center; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.face .meta, .q-card .meta { display: flex; justify-content: space-between; align-items: center; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .back .meta { color: color-mix(in srgb, var(--back-ink) 65%, transparent); }
 .face .body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 14px; min-height: 0; }
 .word { font-family: var(--f-display); font-weight: 700; line-height: 1.12; letter-spacing: -.01em; overflow-wrap: anywhere; text-wrap: balance; }
@@ -145,7 +152,29 @@ main { flex: 1; min-height: 0; position: relative; }
 .item .fi { font-weight: 600; overflow-wrap: anywhere; }
 .item .ru { color: var(--muted); font-size: .88rem; overflow-wrap: anywhere; }
 .item .dots i { width: 6px; height: 6px; }
-.badge { font-size: .7rem; font-weight: 600; color: var(--good); }
+.badge { font-size: .7rem; font-weight: 600; color: var(--good); white-space: nowrap; }
+.badge.q { color: var(--quiz); }
+
+/* Quiz */
+#view-quiz { display: flex; flex-direction: column; gap: 12px; }
+.quiz { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.q-card { flex: 1; min-height: 150px; background: var(--surface); border-radius: 22px; box-shadow: var(--shadow); padding: 16px 20px; display: flex; flex-direction: column; }
+.q-card .body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; min-height: 0; }
+.q-card .dots i.on { background: var(--quiz); }
+.q-card.enter { animation: enter .22s ease-out; }
+.opts { display: flex; flex-direction: column; gap: 8px; }
+.opt { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 10px 14px; border: 1.5px solid var(--line); background: var(--surface); border-radius: 14px; text-align: left; font-size: 1.02rem; line-height: 1.3; transition: background .15s, border-color .15s, opacity .15s, transform .1s; }
+.opt:active { transform: scale(.985); }
+.opt .n { flex: none; width: 24px; height: 24px; border-radius: 7px; background: var(--surface-2); color: var(--muted); font-size: .75rem; font-weight: 600; display: grid; place-items: center; }
+.opt .t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.opt.right { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--surface)); }
+.opt.right .n { background: var(--good); color: var(--surface); }
+.opt.wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, var(--surface)); }
+.opt.wrong .n { background: var(--bad); color: var(--surface); }
+.opt.dim { opacity: .5; }
+.q-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 46px; }
+.q-foot .streak { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.q-foot .btn { padding: 11px 22px; }
 .backup { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; }
 .backup .hint { margin: 0; line-height: 1.45; }
 .field textarea.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .85rem; line-height: 1.45; resize: vertical; }
@@ -155,7 +184,7 @@ main { flex: 1; min-height: 0; position: relative; }
 
 /* Tabs */
 .tabs { display: flex; border-top: 1px solid var(--line); background: var(--surface); padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
-.tabs button { flex: 1; border: 0; background: none; padding: 9px 4px 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: .72rem; font-weight: 500; color: var(--muted); }
+.tabs button { flex: 1; min-width: 0; border: 0; background: none; padding: 9px 4px 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: .72rem; font-weight: 500; color: var(--muted); }
 .tabs button[aria-selected="true"] { color: var(--accent); }
 
 /* Sheet & toast */
@@ -172,20 +201,20 @@ main { flex: 1; min-height: 0; position: relative; }
   <header class="top">
     <div class="brand"><h1>Sana<span>kortit</span></h1><span class="today" id="today"></span></div>
     <div class="progress">
-      <div class="row"><span>Выучено <b id="learned-n">0</b> из <b id="total-n">0</b></span><span id="learned-pct">0%</span></div>
-      <div class="bar"><i id="bar"></i></div>
+      <div class="row"><span><span class="lg"><i class="sw"></i>Выучено <b id="learned-n">0</b></span><span class="lg"><i class="sw q"></i>Тест <b id="quiz-n">0</b></span></span><span>из <b id="total-n">0</b></span></div>
+      <div class="bar" role="img" id="bar-wrap"><i id="bar"></i><i class="q" id="bar-q"></i></div>
     </div>
   </header>
 
   <main>
     <section class="view" id="view-study">
       <div class="controls">
-        <div class="seg" id="dir-seg" role="group" aria-label="Направление">
+        <div class="seg dir-seg" role="group" aria-label="Направление">
           <button data-dir="fi" aria-pressed="true">FI → RU</button>
           <button data-dir="ru" aria-pressed="false">RU → FI</button>
         </div>
         <span class="spacer"></span>
-        <div class="seg" id="filter-seg" role="group" aria-label="Что учить">
+        <div class="seg filter-seg" role="group" aria-label="Что учить">
           <button data-f="all" aria-pressed="true">Всё</button>
           <button data-f="word" aria-pressed="false">Слова</button>
           <button data-f="phrase" aria-pressed="false">Фразы</button>
@@ -203,6 +232,22 @@ main { flex: 1; min-height: 0; position: relative; }
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
         </button>
       </div>
+    </section>
+
+    <section class="view" id="view-quiz" hidden>
+      <div class="controls">
+        <div class="seg dir-seg" role="group" aria-label="Направление">
+          <button data-dir="fi" aria-pressed="true">FI → RU</button>
+          <button data-dir="ru" aria-pressed="false">RU → FI</button>
+        </div>
+        <span class="spacer"></span>
+        <div class="seg filter-seg" role="group" aria-label="Что проверять">
+          <button data-f="all" aria-pressed="true">Всё</button>
+          <button data-f="word" aria-pressed="false">Слова</button>
+          <button data-f="phrase" aria-pressed="false">Фразы</button>
+        </div>
+      </div>
+      <div class="quiz" id="quiz"></div>
     </section>
 
     <section class="view" id="view-add" hidden>
@@ -244,6 +289,8 @@ main { flex: 1; min-height: 0; position: relative; }
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="study" aria-selected="true">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="6" width="13" height="15" rx="2.5"/><path d="M8 3h9.5A2.5 2.5 0 0 1 20 5.5V17"/></svg>Учить</button>
+    <button role="tab" data-view="quiz" aria-selected="false">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/><path d="M15.5 17l1.5 1.5 2.5-3" stroke-linecap="round"/></svg>Тест</button>
     <button role="tab" data-view="add" aria-selected="false">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Добавить</button>
     <button role="tab" data-view="list" aria-selected="false">
@@ -253,7 +300,8 @@ main { flex: 1; min-height: 0; position: relative; }
 
 <script>
 (() => {
-  const LEARNED = 3;           // correct answers in a row → learned
+  const LEARNED = 3;           // correct answers in a row on cards → learned
+  const QKNOWN = 3;            // correct answers in a row in the quiz → "guessed in quiz" (counted separately)
   const MAXBOX = 5;
   const LS_CARDS = 'sanakortit.cards.v1';
   const LS_PREFS = 'sanakortit.prefs.v1';
@@ -274,7 +322,7 @@ main { flex: 1; min-height: 0; position: relative; }
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
   };
   const S = {
-    cards: ls.get(LS_CARDS, []),
+    cards: ls.get(LS_CARDS, []).map(c => Object.assign({ qbox: 0, qseen: 0, qright: 0, qwrong: 0 }, c)),
     prefs: Object.assign({ dir: 'fi', filter: 'all' }, ls.get(LS_PREFS, {})),
     currentId: null, flipped: false, undo: null, recent: []
   };
@@ -299,7 +347,11 @@ main { flex: 1; min-height: 0; position: relative; }
         sw = document.createElement('label'); sw.htmlFor = 'haptic-switch';
         box.append(inp, sw); document.body.append(box);
       }
+      const prev = document.activeElement;
       try { sw.click(); } catch {}
+      // the label click focuses the hidden switch; give focus back so keyboard shortcuts keep working
+      const inp = document.getElementById('haptic-switch');
+      if (document.activeElement === inp) { inp.blur(); if (prev && prev !== document.body && prev.focus) try { prev.focus({ preventScroll: true }); } catch {} }
     };
     const web = (pattern, ticks, gap) => {
       if (canVibrate) { try { navigator.vibrate(pattern); } catch {} }
@@ -343,8 +395,8 @@ main { flex: 1; min-height: 0; position: relative; }
   const cdel = keys => new Promise(res => cloud.removeItems(keys, () => res()));
   const CHUNK = 3800;
   let cloudReady = false, lastChunks = [], saveT = null, saving = Promise.resolve();
-  const pack = c => [c.id, c.fi, c.ru, c.type === 'phrase' ? 1 : 0, c.box, c.seen, c.right, c.wrong, c.last, c.created];
-  const unpack = a => ({ id: String(a[0]), fi: String(a[1]), ru: String(a[2]), type: a[3] ? 'phrase' : 'word', box: a[4] | 0, seen: a[5] | 0, right: a[6] | 0, wrong: a[7] | 0, last: a[8] || 0, created: a[9] || 0 });
+  const pack = c => [c.id, c.fi, c.ru, c.type === 'phrase' ? 1 : 0, c.box, c.seen, c.right, c.wrong, c.last, c.created, c.qbox || 0, c.qseen || 0, c.qright || 0, c.qwrong || 0];
+  const unpack = a => ({ id: String(a[0]), fi: String(a[1]), ru: String(a[2]), type: a[3] ? 'phrase' : 'word', box: a[4] | 0, seen: a[5] | 0, right: a[6] | 0, wrong: a[7] | 0, last: a[8] || 0, created: a[9] || 0, qbox: a[10] | 0, qseen: a[11] | 0, qright: a[12] | 0, qwrong: a[13] | 0 });
   function toChunks() {
     const out = []; let cur = [], len = 2;
     for (const c of S.cards) {
@@ -398,7 +450,7 @@ main { flex: 1; min-height: 0; position: relative; }
     S.cards = S.cards.filter(c => c.id !== id); persist();
   }
   function newCard(fi, ru, type) {
-    return { id: uid(), fi, ru, type, box: 0, seen: 0, right: 0, wrong: 0, last: 0, created: Date.now() };
+    return { id: uid(), fi, ru, type, box: 0, seen: 0, right: 0, wrong: 0, last: 0, created: Date.now(), qbox: 0, qseen: 0, qright: 0, qwrong: 0 };
   }
 
   // ---------- today counter ----------
@@ -437,11 +489,14 @@ main { flex: 1; min-height: 0; position: relative; }
   }
 
   // ---------- render: stats ----------
+  const isLearned = c => c.box >= LEARNED;
+  const isQuizKnown = c => !isLearned(c) && (c.qbox || 0) >= QKNOWN;
   function renderStats() {
-    const total = S.cards.length, learned = S.cards.filter(c => c.box >= LEARNED).length;
-    $('#learned-n').textContent = learned; $('#total-n').textContent = total;
-    const pct = total ? Math.round(learned / total * 100) : 0;
-    $('#learned-pct').textContent = pct + '%'; $('#bar').style.width = pct + '%';
+    const total = S.cards.length, learned = S.cards.filter(isLearned).length, quiz = S.cards.filter(isQuizKnown).length;
+    $('#learned-n').textContent = learned; $('#quiz-n').textContent = quiz; $('#total-n').textContent = total;
+    $('#bar').style.width = (total ? learned / total * 100 : 0) + '%';
+    $('#bar-q').style.width = (total ? quiz / total * 100 : 0) + '%';
+    $('#bar-wrap').setAttribute('aria-label', `Выучено ${learned}, угадано в тесте ${quiz}, всего ${total}`);
   }
 
   // ---------- render: study ----------
@@ -674,7 +729,9 @@ main { flex: 1; min-height: 0; position: relative; }
       const fi = document.createElement('span'); fi.className = 'fi'; fi.textContent = c.fi;
       const ru = document.createElement('span'); ru.className = 'ru'; ru.textContent = c.ru;
       t.append(fi, ru); b.append(t);
-      if (c.box >= LEARNED) { const s = document.createElement('span'); s.className = 'badge'; s.textContent = 'выучено'; b.append(s); } else b.append(dotsEl(c.box));
+      if (isLearned(c)) { const s = document.createElement('span'); s.className = 'badge'; s.textContent = 'выучено'; b.append(s); }
+      else if (isQuizKnown(c)) { const s = document.createElement('span'); s.className = 'badge q'; s.textContent = 'тест'; b.append(s); }
+      else b.append(dotsEl(c.box));
       b.onclick = () => openEdit(c.id); list.append(b);
     });
   }
@@ -842,7 +899,9 @@ main { flex: 1; min-height: 0; position: relative; }
     const efi = sh.querySelector('#edit-fi'), eru = sh.querySelector('#edit-ru');
     efi.value = c.fi; eru.value = c.ru; requestAnimationFrame(() => { autoGrow(efi); autoGrow(eru); });
     efi.oninput = () => autoGrow(efi); eru.oninput = () => autoGrow(eru);
-    sh.querySelector('#edit-stats').textContent = c.seen ? `Показано ${c.seen} ${plural(c.seen, ['раз','раза','раз'])}: помню ${c.right}, не помню ${c.wrong}` : 'Ещё не показывалась';
+    sh.querySelector('#edit-stats').textContent =
+      (c.seen ? `Карточки: показано ${c.seen} ${plural(c.seen, ['раз','раза','раз'])}, помню ${c.right}, не помню ${c.wrong}.` : 'Карточки: ещё не показывалась.') + ' ' +
+      (c.qseen ? `Тест: верно ${c.qright} из ${c.qseen}.` : 'Тест: ещё не было.');
     const close = () => { scrim.remove(); popBack(close); };
     pushBack(close);
     scrim.addEventListener('click', e => { if (e.target === scrim) close(); });
@@ -851,12 +910,124 @@ main { flex: 1; min-height: 0; position: relative; }
       e.preventDefault(); const fi = efi.value.trim(), ru = eru.value.trim(); if (!fi || !ru) return;
       putCard(Object.assign({}, c, { fi, ru, type })); close(); refreshAll(false); H.saved(); toast('Сохранено');
     };
-    sh.querySelector('#edit-reset').onclick = () => { putCard(Object.assign({}, c, { box: 0, seen: 0, right: 0, wrong: 0 })); close(); refreshAll(false); toast('Прогресс сброшен'); };
+    sh.querySelector('#edit-reset').onclick = () => { putCard(Object.assign({}, c, { box: 0, seen: 0, right: 0, wrong: 0, qbox: 0, qseen: 0, qright: 0, qwrong: 0 })); close(); refreshAll(false); toast('Прогресс сброшен'); };
     const del = sh.querySelector('#edit-del');
     del.onclick = () => {
       if (del.dataset.confirm !== '1') { H.warn(); del.dataset.confirm = '1'; del.textContent = 'Точно удалить?'; return; }
       removeCard(c.id); if (S.currentId === c.id) S.currentId = null; close(); refreshAll(false); H.bad(); toast('Удалено');
     };
+  }
+
+
+  // ---------- quiz ----------
+  // Q = { id, opts: [cardId x4], answered: index|null }
+  let Q = null, qStreak = 0, qRecent = [], qTimer = null;
+  const quizEl = $('#quiz');
+  const qAns = c => S.prefs.dir === 'fi' ? c.ru : c.fi;
+  function qWeight(c) {
+    if (isLearned(c)) return 0.4;                         // learned on cards: rarely
+    if ((c.qbox || 0) >= QKNOWN) return 0.9;              // guessed in quiz: sometimes
+    if (!c.qseen) return 5;                               // never asked: often
+    return 7 - c.qbox * 2 + Math.min(c.qwrong || 0, 4) * 0.5;
+  }
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function buildOptions(c) {
+    const key = x => qAns(x).trim().toLowerCase(), own = key(c), used = new Set([own]);
+    const pickFrom = list => shuffle(list.slice()).filter(x => { const k = key(x); if (used.has(k)) return false; used.add(k); return true; });
+    const others = S.cards.filter(x => x.id !== c.id);
+    let d = pickFrom(others.filter(x => x.type === c.type)).slice(0, 3);
+    if (d.length < 3) d = d.concat(pickFrom(others.filter(x => x.type !== c.type)).slice(0, 3 - d.length));
+    if (d.length < 3) return null;
+    return shuffle([c.id, ...d.map(x => x.id)]);
+  }
+  function newQuestion() {
+    clearTimeout(qTimer);
+    const p = pool();
+    let cand = p.filter(c => !qRecent.includes(c.id));
+    if (!cand.length) cand = p;
+    Q = null;
+    for (let tries = 0; tries < 6 && cand.length && !Q; tries++) {
+      const ws = cand.map(qWeight), sum = ws.reduce((a, b) => a + b, 0);
+      let r = Math.random() * sum, c = cand[cand.length - 1];
+      for (let i = 0; i < cand.length; i++) { r -= ws[i]; if (r <= 0) { c = cand[i]; break; } }
+      const opts = buildOptions(c);
+      if (opts) Q = { id: c.id, opts, answered: null };
+      else cand = cand.filter(x => x !== c);
+    }
+    if (Q) { qRecent.push(Q.id); const keep = Math.min(4, p.length - 2); qRecent = keep > 0 ? qRecent.slice(-keep) : []; }
+    renderQuiz(true);
+  }
+  function renderQuiz(enter) {
+    quizEl.innerHTML = '';
+    const controls = $('#view-quiz .controls');
+    const c = Q && S.cards.find(x => x.id === Q.id);
+    if (!c) {
+      const enough = S.cards.length >= 4;
+      controls.hidden = !enough;
+      const e = document.createElement('div'); e.className = 'empty';
+      e.innerHTML = enough
+        ? '<h2>Здесь пусто</h2><p>В этом разделе нет карточек для теста. Выбери «Всё» или добавь новые.</p>'
+        : '<h2>Для теста нужно 4 карточки</h2><p>Тест показывает слово и четыре варианта перевода. Добавь ещё слов, чтобы было из чего выбирать.</p>';
+      if (!enough) {
+        const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Добавить слово'; b.onclick = () => go('add');
+        e.append(b);
+      }
+      quizEl.append(e); return;
+    }
+    controls.hidden = false;
+    const fiFirst = S.prefs.dir === 'fi';
+    const card = document.createElement('div'); card.className = 'q-card' + (enter ? ' enter' : '');
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const l = document.createElement('span'); l.textContent = fiFirst ? 'выбери перевод' : 'выбери по-фински';
+    const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = c.type === 'phrase' ? 'фраза' : 'слово';
+    meta.append(l, tag);
+    const body = document.createElement('div'); body.className = 'body';
+    const q = fiFirst ? c.fi : c.ru;
+    const w = document.createElement('div'); w.className = 'word'; w.textContent = q; w.style.fontSize = Math.min(sizeFor(q), 2.2) + 'rem'; body.append(w);
+    if (fiFirst) { const sb = speakBtn(c.fi); if (sb) body.append(sb); }
+    const dots = document.createElement('div'); dots.className = 'dots'; for (let i = 0; i < QKNOWN; i++) { const x = document.createElement('i'); if (i < (c.qbox || 0)) x.className = 'on'; dots.append(x); }
+    card.append(meta, body, dots);
+
+    const opts = document.createElement('div'); opts.className = 'opts'; opts.setAttribute('role', 'group'); opts.setAttribute('aria-label', 'Варианты ответа');
+    Q.opts.forEach((id, i) => {
+      const oc = S.cards.find(x => x.id === id);
+      const b = document.createElement('button'); b.className = 'opt'; b.type = 'button';
+      const n = document.createElement('span'); n.className = 'n'; n.textContent = i + 1;
+      const t = document.createElement('span'); t.className = 't'; t.textContent = oc ? qAns(oc) : '—';
+      b.append(n, t);
+      if (Q.answered !== null) {
+        if (id === Q.id) b.classList.add('right');
+        else if (i === Q.answered) b.classList.add('wrong');
+        else b.classList.add('dim');
+      }
+      b.onclick = () => Q.answered === null ? answer(i) : newQuestion();
+      opts.append(b);
+    });
+
+    const foot = document.createElement('div'); foot.className = 'q-foot';
+    const st = document.createElement('span'); st.className = 'streak';
+    st.textContent = qStreak >= 2 ? 'Серия: ' + qStreak + ' подряд' : (matchMedia('(hover: hover) and (pointer: fine)').matches ? 'Можно отвечать цифрами 1–4' : '');
+    foot.append(st);
+    if (Q.answered !== null && Q.opts[Q.answered] !== Q.id) {
+      const nb = document.createElement('button'); nb.className = 'btn'; nb.type = 'button'; nb.textContent = 'Дальше'; nb.onclick = () => { H.tick(); newQuestion(); };
+      foot.append(nb);
+    }
+    quizEl.append(card, opts, foot);
+  }
+  function answer(i) {
+    if (!Q || Q.answered !== null) return;
+    const c = S.cards.find(x => x.id === Q.id); if (!c) return newQuestion();
+    Q.answered = i;
+    const ok = Q.opts[i] === Q.id;
+    const qbox = ok ? Math.min(MAXBOX, (c.qbox || 0) + 1) : 0;
+    const becameKnown = ok && !isLearned(c) && (c.qbox || 0) < QKNOWN && qbox >= QKNOWN;
+    putCard(Object.assign({}, c, { qbox, qseen: (c.qseen || 0) + 1, qright: (c.qright || 0) + (ok ? 1 : 0), qwrong: (c.qwrong || 0) + (ok ? 0 : 1) }));
+    qStreak = ok ? qStreak + 1 : 0;
+    bumpToday(1); renderStats();
+    if (becameKnown) H.learned(); else if (ok) H.good(); else H.bad();
+    renderQuiz(false);
+    if (becameKnown) toast('Угадано в тесте: ' + c.fi);
+    if (ok) qTimer = setTimeout(() => { if (view === 'quiz' && Q && Q.answered !== null) newQuestion(); }, 750);
   }
 
   // ---------- navigation & prefs ----------
@@ -865,23 +1036,31 @@ main { flex: 1; min-height: 0; position: relative; }
     if (v !== view) H.tick();
     view = v;
     document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === v)));
-    ['study', 'add', 'list'].forEach(n => $('#view-' + n).hidden = n !== v);
+    ['study', 'quiz', 'add', 'list'].forEach(n => $('#view-' + n).hidden = n !== v);
     if (v === 'list') renderList();
     if (v === 'study') renderStudy(false);
+    if (v === 'quiz') { if (!Q || Q.answered !== null || !S.cards.some(x => x.id === Q.id)) newQuestion(); else renderQuiz(false); }
     if (v === 'add') setTimeout(() => src.focus(), 50);
   }
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => go(b.dataset.view)));
   function syncSeg() {
-    document.querySelectorAll('#dir-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dir === S.prefs.dir)));
-    document.querySelectorAll('#filter-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === S.prefs.filter)));
+    document.querySelectorAll('.dir-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dir === S.prefs.dir)));
+    document.querySelectorAll('.filter-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === S.prefs.filter)));
   }
-  document.querySelectorAll('#dir-seg button').forEach(b => b.addEventListener('click', () => { if (S.prefs.dir !== b.dataset.dir) H.tick(); S.prefs.dir = b.dataset.dir; ls.set(LS_PREFS, S.prefs); syncSeg(); S.flipped = false; renderStudy(true); }));
-  document.querySelectorAll('#filter-seg button').forEach(b => b.addEventListener('click', () => { if (S.prefs.filter !== b.dataset.f) H.tick(); S.prefs.filter = b.dataset.f; ls.set(LS_PREFS, S.prefs); syncSeg(); S.recent = []; S.currentId = null; renderStudy(true); }));
+  const rerenderMode = () => { if (view === 'quiz') newQuestion(); else renderStudy(true); };
+  document.querySelectorAll('.dir-seg button').forEach(b => b.addEventListener('click', () => { if (S.prefs.dir === b.dataset.dir) return; H.tick(); S.prefs.dir = b.dataset.dir; ls.set(LS_PREFS, S.prefs); syncSeg(); S.flipped = false; rerenderMode(); }));
+  document.querySelectorAll('.filter-seg button').forEach(b => b.addEventListener('click', () => { if (S.prefs.filter === b.dataset.f) return; H.tick(); S.prefs.filter = b.dataset.f; ls.set(LS_PREFS, S.prefs); syncSeg(); S.recent = []; qRecent = []; S.currentId = null; rerenderMode(); }));
   $('#btn-flip').onclick = () => setFlip(!S.flipped);
   $('#btn-yes').onclick = () => commit(true);
   $('#btn-no').onclick = () => commit(false);
+  const isTyping = () => { const a = document.activeElement; return !!a && a.matches('textarea, input:not([type=checkbox]):not([type=file])'); };
   document.addEventListener('keydown', e => {
-    if (view !== 'study' || document.querySelector('.scrim') || /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    if (view === 'quiz' && !document.querySelector('.scrim') && !isTyping()) {
+      if (/^[1-4]$/.test(e.key) && Q) { if (Q.answered === null) answer(+e.key - 1); else newQuestion(); }
+      else if ((e.key === 'Enter' || e.key === ' ') && Q && Q.answered !== null) { e.preventDefault(); newQuestion(); }
+      return;
+    }
+    if (view !== 'study' || document.querySelector('.scrim') || isTyping()) return;
     if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setFlip(!S.flipped); }
     else if (e.key === 'ArrowRight') commit(true);
     else if (e.key === 'ArrowLeft') commit(false);
@@ -894,6 +1073,8 @@ main { flex: 1; min-height: 0; position: relative; }
     // skip re-rendering the card when nothing visible changed (e.g. our own write echoing back) or while dragging
     if (view === 'study' && !busy && !document.querySelector('.swipe[data-drag="1"]') && sigOf() !== shownSig) renderStudy(enter);
     if (view === 'list') renderList();
+    // quiz: keep the open question unless its card (or an option) disappeared
+    if (view === 'quiz' && (!Q || !Q.opts.every(id => S.cards.some(x => x.id === id)))) newQuestion();
   }
 
   initTelegram();

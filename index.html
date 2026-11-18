@@ -282,7 +282,40 @@ main { flex: 1; min-height: 0; position: relative; }
   const TGW = window.Telegram && window.Telegram.WebApp;
   const TG = TGW && TGW.initData ? TGW : null;           // non-null only inside Telegram
   const tgAtLeast = v => { try { return !!TG && TG.isVersionAtLeast(v); } catch { return false; } };
-  const haptic = (kind, v) => { try { if (tgAtLeast('6.1')) TG.HapticFeedback[kind](v); } catch {} };
+  // ---------- haptics ----------
+  // Telegram: native HapticFeedback (iOS Taptic Engine + Android).
+  // iOS Safari / home-screen app (iOS 18+): toggling a hidden <input switch> plays the system tick.
+  // Android browsers: navigator.vibrate.
+  const H = (() => {
+    const tg = (kind, v) => { try { if (tgAtLeast('6.1')) { TG.HapticFeedback[kind](v); return true; } } catch {} return false; };
+    const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const canVibrate = !isIOS && typeof navigator.vibrate === 'function';
+    let sw = null;
+    const iosTick = () => {
+      if (!sw) {
+        const box = document.createElement('div'); box.setAttribute('aria-hidden', 'true');
+        box.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+        const inp = document.createElement('input'); inp.type = 'checkbox'; inp.setAttribute('switch', ''); inp.id = 'haptic-switch'; inp.tabIndex = -1;
+        sw = document.createElement('label'); sw.htmlFor = 'haptic-switch';
+        box.append(inp, sw); document.body.append(box);
+      }
+      try { sw.click(); } catch {}
+    };
+    const web = (pattern, ticks, gap) => {
+      if (canVibrate) { try { navigator.vibrate(pattern); } catch {} }
+      else if (isIOS) { iosTick(); for (let i = 1; i < ticks; i++) setTimeout(iosTick, i * (gap || 70)); }
+    };
+    return {
+      tick()    { tg('selectionChanged') || web(6, 1); },                       // flip, toggles, tabs
+      detent()  { tg('impactOccurred', 'soft') || web(10, 1); },                // swipe crosses the "will count" line
+      good()    { tg('impactOccurred', 'light') || web([10, 50, 16], 2, 60);    // remembered: light double tap
+                  if (TG) setTimeout(() => tg('impactOccurred', 'medium'), 70); },
+      bad()     { tg('impactOccurred', 'rigid') || web(22, 1); },               // not remembered: one firm knock, no error buzz
+      learned() { tg('notificationOccurred', 'success') || web([12, 60, 12, 60, 28], 3, 75); },
+      saved()   { tg('notificationOccurred', 'success') || web([10, 50, 16], 2, 60); },
+      warn()    { tg('notificationOccurred', 'warning') || web([20, 40, 20], 2, 60); },
+    };
+  })();
   const backStack = [];
   function pushBack(fn) { backStack.push(fn); if (tgAtLeast('6.1')) TG.BackButton.show(); }
   function popBack(fn) { const i = backStack.lastIndexOf(fn); if (i >= 0) backStack.splice(i, 1); if (tgAtLeast('6.1') && !backStack.length) TG.BackButton.hide(); }
@@ -479,11 +512,11 @@ main { flex: 1; min-height: 0; position: relative; }
     shownSig = sigOf();
   }
 
-  function setFlip(v) { haptic('impactOccurred', 'light'); S.flipped = v; const f = stage.querySelector('.flip'); if (f) f.classList.toggle('flipped', v); }
+  function setFlip(v) { H.tick(); S.flipped = v; const f = stage.querySelector('.flip'); if (f) f.classList.toggle('flipped', v); }
 
   function attachSwipe(sw, flip, yes, no) {
-    let sx = 0, sy = 0, dx = 0, t0 = 0, down = false, moved = false, horiz = null;
-    sw.addEventListener('pointerdown', e => { down = true; sw.dataset.drag = '1'; moved = false; horiz = null; sx = e.clientX; sy = e.clientY; dx = 0; t0 = performance.now(); sw.classList.remove('anim', 'enter'); try { sw.setPointerCapture(e.pointerId); } catch {} });
+    let sx = 0, sy = 0, dx = 0, t0 = 0, down = false, moved = false, horiz = null, armed = 0;
+    sw.addEventListener('pointerdown', e => { down = true; sw.dataset.drag = '1'; armed = 0; moved = false; horiz = null; sx = e.clientX; sy = e.clientY; dx = 0; t0 = performance.now(); sw.classList.remove('anim', 'enter'); try { sw.setPointerCapture(e.pointerId); } catch {} });
     sw.addEventListener('pointermove', e => {
       if (!down) return;
       const ddx = e.clientX - sx, ddy = e.clientY - sy;
@@ -492,6 +525,8 @@ main { flex: 1; min-height: 0; position: relative; }
       moved = true; dx = ddx;
       sw.style.transform = `translateX(${dx}px) rotate(${dx / 20}deg)`;
       const k = Math.min(1, Math.abs(dx) / 110);
+      const over = Math.abs(dx) > 100 ? Math.sign(dx) : 0;
+      if (over !== armed) { if (over) H.detent(); armed = over; }
       yes.style.opacity = dx > 0 ? k : 0; no.style.opacity = dx < 0 ? k : 0;
     });
     const end = e => {
@@ -519,7 +554,7 @@ main { flex: 1; min-height: 0; position: relative; }
     });
     const becameLearned = ok && c.box < LEARNED && upd.box >= LEARNED;
     putCard(upd); bumpToday(1); renderStats();
-    haptic('notificationOccurred', ok ? 'success' : 'error');
+    if (becameLearned) H.learned(); else if (ok) H.good(); else H.bad();
     const done = () => { busy = false; advance(); toast(becameLearned ? 'Выучено: ' + upd.fi : (ok ? 'Помню' : 'Повторим позже'), true); };
     if (sw) {
       sw.classList.add('anim');
@@ -529,7 +564,7 @@ main { flex: 1; min-height: 0; position: relative; }
     } else done();
   }
   function undo() {
-    if (!S.undo) return;
+    if (!S.undo) return; H.tick();
     putCard(S.undo.card); bumpToday(-1); S.currentId = S.undo.card.id; S.flipped = false; S.undo = null;
     renderStats(); renderStudy(true); hideToast();
   }
@@ -619,7 +654,7 @@ main { flex: 1; min-height: 0; position: relative; }
     putCard(newCard(fi, ru, addType));
     src.value = ''; dst.value = ''; dstEdited = false; typeTouched = false; setType('word'); status.textContent = '';
     saveBtn.dataset.confirm = ''; saveBtn.textContent = 'Сохранить карточку'; autoGrow(src); autoGrow(dst); updateSave();
-    refreshAll(false); toast('Добавлено: ' + fi); src.focus();
+    refreshAll(false); H.saved(); toast('Добавлено: ' + fi); src.focus();
   });
   src.addEventListener('input', () => { if (saveBtn.dataset.confirm) { saveBtn.dataset.confirm = ''; saveBtn.textContent = 'Сохранить карточку'; } });
 
@@ -757,7 +792,7 @@ main { flex: 1; min-height: 0; position: relative; }
         putCard(newCard(r.fi, ru, r.type), true); added++;
       }
       persist(); running = false; close(); refreshAll(false);
-      haptic('notificationOccurred', 'success');
+      H.saved();
       toast(`Добавлено ${added} ${plural(added, ['карточка', 'карточки', 'карточек'])}` + (failed ? `, ${failed} без перевода пропущено` : ''));
     };
   });
@@ -774,7 +809,7 @@ main { flex: 1; min-height: 0; position: relative; }
     const ta = sh.querySelector('#exp-text'); ta.value = csv;
     sh.querySelector('#exp-close').onclick = close;
     sh.querySelector('#exp-copy').onclick = () => {
-      const ok = () => { haptic('notificationOccurred', 'success'); toast('CSV скопирован'); };
+      const ok = () => { H.saved(); toast('CSV скопирован'); };
       const fallback = () => { ta.focus(); ta.select(); try { document.execCommand('copy') ? ok() : toast('Выдели текст и скопируй вручную'); } catch { toast('Выдели текст и скопируй вручную'); } };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(csv).then(ok, fallback); else fallback();
     };
@@ -814,19 +849,20 @@ main { flex: 1; min-height: 0; position: relative; }
     sh.querySelector('#edit-cancel').onclick = close;
     sh.querySelector('#edit-form').onsubmit = e => {
       e.preventDefault(); const fi = efi.value.trim(), ru = eru.value.trim(); if (!fi || !ru) return;
-      putCard(Object.assign({}, c, { fi, ru, type })); close(); refreshAll(false); toast('Сохранено');
+      putCard(Object.assign({}, c, { fi, ru, type })); close(); refreshAll(false); H.saved(); toast('Сохранено');
     };
     sh.querySelector('#edit-reset').onclick = () => { putCard(Object.assign({}, c, { box: 0, seen: 0, right: 0, wrong: 0 })); close(); refreshAll(false); toast('Прогресс сброшен'); };
     const del = sh.querySelector('#edit-del');
     del.onclick = () => {
-      if (del.dataset.confirm !== '1') { del.dataset.confirm = '1'; del.textContent = 'Точно удалить?'; return; }
-      removeCard(c.id); if (S.currentId === c.id) S.currentId = null; close(); refreshAll(false); toast('Удалено');
+      if (del.dataset.confirm !== '1') { H.warn(); del.dataset.confirm = '1'; del.textContent = 'Точно удалить?'; return; }
+      removeCard(c.id); if (S.currentId === c.id) S.currentId = null; close(); refreshAll(false); H.bad(); toast('Удалено');
     };
   }
 
   // ---------- navigation & prefs ----------
   let view = 'study';
   function go(v) {
+    if (v !== view) H.tick();
     view = v;
     document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === v)));
     ['study', 'add', 'list'].forEach(n => $('#view-' + n).hidden = n !== v);
@@ -839,8 +875,8 @@ main { flex: 1; min-height: 0; position: relative; }
     document.querySelectorAll('#dir-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dir === S.prefs.dir)));
     document.querySelectorAll('#filter-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === S.prefs.filter)));
   }
-  document.querySelectorAll('#dir-seg button').forEach(b => b.addEventListener('click', () => { S.prefs.dir = b.dataset.dir; ls.set(LS_PREFS, S.prefs); syncSeg(); S.flipped = false; renderStudy(true); }));
-  document.querySelectorAll('#filter-seg button').forEach(b => b.addEventListener('click', () => { S.prefs.filter = b.dataset.f; ls.set(LS_PREFS, S.prefs); syncSeg(); S.recent = []; S.currentId = null; renderStudy(true); }));
+  document.querySelectorAll('#dir-seg button').forEach(b => b.addEventListener('click', () => { if (S.prefs.dir !== b.dataset.dir) H.tick(); S.prefs.dir = b.dataset.dir; ls.set(LS_PREFS, S.prefs); syncSeg(); S.flipped = false; renderStudy(true); }));
+  document.querySelectorAll('#filter-seg button').forEach(b => b.addEventListener('click', () => { if (S.prefs.filter !== b.dataset.f) H.tick(); S.prefs.filter = b.dataset.f; ls.set(LS_PREFS, S.prefs); syncSeg(); S.recent = []; S.currentId = null; renderStudy(true); }));
   $('#btn-flip').onclick = () => setFlip(!S.flipped);
   $('#btn-yes').onclick = () => commit(true);
   $('#btn-no').onclick = () => commit(false);

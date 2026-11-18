@@ -148,9 +148,11 @@ main { flex: 1; min-height: 0; position: relative; }
 .list-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
 .list-body { display: flex; flex-direction: column; gap: 14px; }
 .group { display: flex; flex-direction: column; }
-.letter { position: sticky; top: calc(var(--list-head, 0px) - 4px); z-index: 1; background: var(--bg); padding: 6px 4px 6px; font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; color: var(--accent); display: flex; align-items: baseline; gap: 8px; }
+.letter { position: sticky; top: calc(var(--list-head, 0px) - 1px); margin-top: -1px; border-top: 1px solid var(--bg); z-index: 1; background: var(--bg); padding: 6px 4px 6px; font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; color: var(--accent); display: flex; align-items: baseline; gap: 8px; }
 .letter small { font-family: var(--f-body); font-weight: 500; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.list-head { display: flex; flex-direction: column; gap: 10px; position: sticky; top: -4px; background: var(--bg); padding-block: 4px 10px; z-index: 2; }
+.list-head { position: sticky; top: 0; background: var(--bg); padding-block: 4px 10px; z-index: 2; }
+#view-list { padding-top: 0; }
+#view-list .list-tools { padding-bottom: 12px; }
 .list { display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: var(--surface); }
 .item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; width: 100%; }
 .item:last-child { border-bottom: 0; }
@@ -279,14 +281,13 @@ main { flex: 1; min-height: 0; position: relative; }
     <section class="view" id="view-list" hidden>
       <div class="list-head">
         <div class="field"><input id="search" type="search" placeholder="Поиск по словам" aria-label="Поиск"></div>
-        <div class="list-tools">
-          <div class="seg" id="sort-seg" role="group" aria-label="Сортировка">
-            <button type="button" data-sort="added" aria-pressed="true">По добавлению</button>
-            <button type="button" data-sort="az" aria-pressed="false">A–Ö</button>
-            <button type="button" data-sort="za" aria-pressed="false">Ö–A</button>
-          </div>
-          <div class="counts" id="list-counts"></div>
+      </div>
+      <div class="list-tools">
+        <div class="seg" id="sort-seg" role="group" aria-label="Сортировка">
+          <button type="button" data-sort="added" aria-pressed="true">По добавлению</button>
+          <button type="button" data-sort="az" aria-pressed="false">По алфавиту</button>
         </div>
+        <div class="counts" id="list-counts"></div>
       </div>
       <div class="list-body" id="list"></div>
       <div class="backup">
@@ -750,7 +751,7 @@ main { flex: 1; min-height: 0; position: relative; }
   }
   function renderList() {
     const q = $('#search').value.trim().toLowerCase();
-    const sort = S.prefs.sort;
+    const sort = S.prefs.sort === 'added' ? 'added' : 'az';
     document.querySelectorAll('#sort-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sort === sort)));
     const box = $('#list'); box.innerHTML = '';
     let items = S.cards.filter(c => !q || c.fi.toLowerCase().includes(q) || c.ru.toLowerCase().includes(q));  // array order = order added/imported
@@ -761,7 +762,7 @@ main { flex: 1; min-height: 0; position: relative; }
       const l = document.createElement('div'); l.className = 'list';
       items.forEach(c => l.append(listItem(c))); box.append(l); return;
     }
-    items = items.slice().sort((a, b) => fiCollator.compare(a.fi, b.fi) * (sort === 'za' ? -1 : 1));
+    items = items.slice().sort((a, b) => fiCollator.compare(a.fi, b.fi));
     const groups = [];
     items.forEach(c => { const L = letterOf(c.fi); const g = groups[groups.length - 1]; if (g && g.L === L) g.cards.push(c); else groups.push({ L, cards: [c] }); });
     groups.forEach(g => {
@@ -778,7 +779,7 @@ main { flex: 1; min-height: 0; position: relative; }
     H.tick(); S.prefs.sort = b.dataset.sort; ls.set(LS_PREFS, S.prefs); renderList();
   }));
   // sticky letter headers sit right under the sticky search block
-  try { new ResizeObserver(() => $('#view-list').style.setProperty('--list-head', $('.list-head').offsetHeight + 'px')).observe($('.list-head')); } catch {}
+  try { new ResizeObserver(() => $('#view-list').style.setProperty('--list-head', $('.list-head').getBoundingClientRect().height + 'px')).observe($('.list-head')); } catch {}
   $('#search').addEventListener('input', renderList);
 
   // ---------- CSV import / export ----------

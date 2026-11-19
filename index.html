@@ -185,6 +185,8 @@ main { flex: 1; min-height: 0; position: relative; }
 .q-foot .btn { padding: 11px 22px; }
 .backup { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; }
 .backup .hint { margin: 0; line-height: 1.45; }
+.backup .hint.bad { color: var(--bad, #c0392b); }
+.linkish { display: block; margin: 6px auto 0; background: none; border: 0; color: var(--accent); font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; padding: 6px 10px; }
 .field textarea.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .85rem; line-height: 1.45; resize: vertical; }
 .imp-preview .item { padding: 9px 14px; }
 .imp-preview .item.hint { justify-content: center; }
@@ -402,64 +404,129 @@ main { flex: 1; min-height: 0; position: relative; }
   }
 
   // ---------- Telegram CloudStorage sync ----------
-  // Cards are packed into JSON chunks under keys d0..dN (each value ≤ 4096 chars), count under "dn".
+  // Cards are packed into JSON chunks under keys d0..dN, count under "dn".
+  // Each chunk is kept under 3500 UTF-8 bytes (Cyrillic = 2 bytes/char), safely below the 4096 limit however a client counts it.
+  // LS_DIRTY marks local changes the cloud hasn't confirmed yet; on the next start they are merged into the cloud copy, not overwritten by it.
+  const LS_DIRTY = 'sanakortit.dirty.v1';
+  const LS_SYNCED = 'sanakortit.synced.v1';
   const cloud = tgAtLeast('6.9') ? TG.CloudStorage : null;
-  const cget = keys => new Promise((res, rej) => cloud.getItems(keys, (e, v) => e ? rej(e) : res(v || {})));
-  const cset = (k, v) => new Promise((res, rej) => cloud.setItem(k, v, e => e ? rej(e) : res()));
+  const cerr = e => new Error(typeof e === 'string' ? e : (e && e.message) || 'unknown');
+  const cget = keys => new Promise((res, rej) => cloud.getItems(keys, (e, v) => e ? rej(cerr(e)) : res(v || {})));
+  const cset = (k, v) => new Promise((res, rej) => cloud.setItem(k, v, (e, ok) => e || ok === false ? rej(cerr(e || 'setItem failed')) : res()));
   const cdel = keys => new Promise(res => cloud.removeItems(keys, () => res()));
-  const CHUNK = 3800;
-  let cloudReady = false, lastChunks = [], saveT = null, saving = Promise.resolve();
+  const CHUNK = 3500;
+  const enc = new TextEncoder(), blen = s => enc.encode(s).length;
+  let cloudReady = false, lastChunks = [], saveT = null, retryT = null, saving = Promise.resolve(), rev = 0;
+  let sync = { state: cloud ? 'connecting' : 'off', err: '' };
+  const isDirty = () => { try { return localStorage.getItem(LS_DIRTY) === '1' || (localStorage.getItem(LS_SYNCED) !== '1' && S.cards.length > 0); } catch { return true; } };
+  const setDirty = v => { try { if (v) localStorage.setItem(LS_DIRTY, '1'); else { localStorage.removeItem(LS_DIRTY); localStorage.setItem(LS_SYNCED, '1'); } } catch {} };
   const pack = c => [c.id, c.fi, c.ru, c.type === 'phrase' ? 1 : 0, c.box, c.seen, c.right, c.wrong, c.last, c.created, c.qbox || 0, c.qseen || 0, c.qright || 0, c.qwrong || 0];
   const unpack = a => ({ id: String(a[0]), fi: String(a[1]), ru: String(a[2]), type: a[3] ? 'phrase' : 'word', box: a[4] | 0, seen: a[5] | 0, right: a[6] | 0, wrong: a[7] | 0, last: a[8] || 0, created: a[9] || 0, qbox: a[10] | 0, qseen: a[11] | 0, qright: a[12] | 0, qwrong: a[13] | 0 });
   function toChunks() {
     const out = []; let cur = [], len = 2;
     for (const c of S.cards) {
-      const s = JSON.stringify(pack(c));
-      if (len + s.length + 1 > CHUNK && cur.length) { out.push('[' + cur.join(',') + ']'); cur = []; len = 2; }
-      cur.push(s); len += s.length + 1;
+      const s = JSON.stringify(pack(c)), n = blen(s);
+      if (len + n + 1 > CHUNK && cur.length) { out.push('[' + cur.join(',') + ']'); cur = []; len = 2; }
+      cur.push(s); len += n + 1;
     }
     if (cur.length) out.push('[' + cur.join(',') + ']');
     return out;
   }
-  function scheduleCloudSave() { if (!cloud || !cloudReady) return; clearTimeout(saveT); saveT = setTimeout(cloudSave, 500); }
+  function renderSync() {
+    const el = $('#storage-hint'); if (!el) return;
+    const n = S.cards.length, w = n + ' ' + plural(n, ['карточка', 'карточки', 'карточек']);
+    const msg = {
+      off: 'Карточки хранятся только в этом браузере. Сохраняй CSV, чтобы не потерять их.',
+      connecting: 'Подключаюсь к облаку Telegram…',
+      saving: 'Сохраняю в облако Telegram…',
+      ok: 'В облаке Telegram: ' + w + '. Видно на всех твоих устройствах.',
+      error: 'Облако Telegram недоступно (' + sync.err + '). Карточки сохранены на этом устройстве, повторю попытку.'
+    }[sync.state];
+    el.textContent = msg; el.classList.toggle('bad', sync.state === 'error');
+    let b = $('#sync-retry');
+    if (sync.state === 'error') {
+      if (!b) { b = document.createElement('button'); b.id = 'sync-retry'; b.type = 'button'; b.className = 'linkish'; b.textContent = 'Повторить сейчас'; el.after(b);
+        b.onclick = () => { H.tick(); clearTimeout(retryT); cloudReady ? cloudSave() : connectCloud(); }; }
+    } else if (b) b.remove();
+  }
+  function setSync(state, err) { sync = { state, err: err || '' }; renderSync(); }
+  function scheduleCloudSave() { if (!cloud || !cloudReady) return; clearTimeout(saveT); saveT = setTimeout(cloudSave, 400); }
   function cloudSave() {
+    clearTimeout(saveT); clearTimeout(retryT);
+    const myRev = rev;
+    setSync('saving');
     saving = saving.then(async () => {
-      const ch = toChunks();
-      for (let i = 0; i < ch.length; i++) if (ch[i] !== lastChunks[i]) await cset('d' + i, ch[i]);
-      if (ch.length !== lastChunks.length) {
+      const ch = toChunks(), prevLen = lastChunks.length, dnOk = lastChunks.dn;
+      for (let i = 0; i < ch.length; i++) if (ch[i] !== lastChunks[i]) { await cset('d' + i, ch[i]); lastChunks[i] = ch[i]; }
+      if (ch.length !== prevLen || !dnOk) {
         await cset('dn', String(ch.length));
-        const extra = []; for (let i = ch.length; i < lastChunks.length; i++) extra.push('d' + i);
+        const extra = []; for (let i = ch.length; i < prevLen; i++) extra.push('d' + i);
         if (extra.length) await cdel(extra);
       }
-      lastChunks = ch;
-    }).catch(() => toast('Не удалось сохранить в облако Telegram, карточки остались на этом устройстве'));
+      lastChunks = ch.slice(); lastChunks.dn = true;
+      if (rev === myRev) setDirty(false);
+      setSync('ok');
+    }).catch(e => {
+      lastChunks = lastChunks.slice(); lastChunks.dn = false;   // force a full re-check next time
+      setSync('error', e.message);
+      retryT = setTimeout(cloudSave, 15000);
+    });
+    return saving;
+  }
+  // union by id; same id → the copy reviewed more recently; drop local-only duplicates of a word already in the cloud
+  function mergeCards(remote, local) {
+    const byId = new Map(remote.map(c => [c.id, c]));
+    const key = c => c.fi.trim().toLowerCase();
+    const known = new Set(remote.map(key));
+    const out = remote.slice(); let added = 0;
+    for (const c of local) {
+      const r = byId.get(c.id);
+      if (r) { if ((c.last || 0) > (r.last || 0) || (c.seen + c.qseen) > (r.seen + r.qseen)) out[out.indexOf(r)] = c; }
+      else if (!known.has(key(c))) { out.push(c); known.add(key(c)); added++; }
+    }
+    return { cards: out, added };
   }
   async function connectCloud() {
     if (!cloud) return;
+    clearTimeout(retryT); setSync('connecting');
     try {
-      const n = parseInt((await cget(['dn'])).dn || '0', 10) || 0;
+      const meta = await cget(['dn']);
+      const n = parseInt(meta.dn || '0', 10) || 0;
+      const remote = [];
       if (n > 0) {
         const keys = Array.from({ length: n }, (_, i) => 'd' + i), vals = {};
         for (let i = 0; i < keys.length; i += 20) Object.assign(vals, await cget(keys.slice(i, i + 20)));
-        lastChunks = keys.map(k => vals[k] || '');
-        const cards = [];
-        lastChunks.forEach(s => { try { JSON.parse(s).forEach(a => cards.push(unpack(a))); } catch {} });
-        S.cards = cards; saveLocal();
+        lastChunks = keys.map(k => vals[k] || ''); lastChunks.dn = true;
+        lastChunks.forEach(s => { try { JSON.parse(s).forEach(a => remote.push(unpack(a))); } catch {} });
       }
+      const dirty = isDirty();
+      let push = false, added = 0;
+      if (dirty && S.cards.length) {
+        const m = mergeCards(remote, S.cards); S.cards = m.cards; added = m.added; push = true;
+      } else if (n > 0) {
+        S.cards = remote;
+      }
+      saveLocal();
       cloudReady = true;
-      if (!n && S.cards.length) cloudSave();   // first run in Telegram: upload what this device has
+      if (push) { await cloudSave(); if (added) toast('Отправил в облако ' + added + ' ' + plural(added, ['карточку', 'карточки', 'карточек']) + ' с этого устройства'); }
+      else { setDirty(false); setSync('ok'); }
       refreshAll(false);
-    } catch { /* stay on local storage */ }
+    } catch (e) {
+      setSync('error', e.message);
+      retryT = setTimeout(connectCloud, 10000);
+    }
   }
+  // flush pending changes when the app goes to background / is being closed
+  document.addEventListener('visibilitychange', () => { if (document.hidden && cloudReady && saveT) cloudSave(); });
 
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  function saveLocal() { ls.set(LS_CARDS, S.cards); }
+  function saveLocal() { ls.set(LS_CARDS, S.cards); if (sync.state === 'ok') renderSync(); }
+  function persist() { rev++; saveLocal(); if (cloud) setDirty(true); scheduleCloudSave(); }
   function putCard(c, silent) {
     const i = S.cards.findIndex(x => x.id === c.id);
     if (i >= 0) S.cards[i] = c; else S.cards.push(c);
-    if (!silent) { saveLocal(); scheduleCloudSave(); }
+    if (!silent) persist();
   }
-  function persist() { saveLocal(); scheduleCloudSave(); }
   function removeCard(id) {
     S.cards = S.cards.filter(c => c.id !== id); persist();
   }
@@ -1123,9 +1190,7 @@ main { flex: 1; min-height: 0; position: relative; }
   }
 
   initTelegram();
-  $('#storage-hint').textContent = cloud
-    ? 'Карточки хранятся в облаке Telegram и видны на всех твоих устройствах.'
-    : 'Карточки хранятся только в этом браузере. Сохраняй CSV, чтобы не потерять их.';
+  renderSync();
   syncSeg(); renderToday(); refreshAll(true);
   connectCloud();
 })();

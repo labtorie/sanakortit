@@ -216,6 +216,8 @@ main { flex: 1; min-height: 0; position: relative; }
 .save-row { position: sticky; bottom: 0; margin-top: auto; padding-block: 10px max(12px, env(safe-area-inset-bottom, 0px)); background: var(--bg); }
 /* keyboard open on the add screen: give the fields all the room */
 html.kb .top, html.kb .tabs { display: none; }
+html.kb, html.kb body { overscroll-behavior: none; }
+#view-add { overscroll-behavior: contain; }
 .add-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 #kb-done { display: none; font-size: .82rem; padding: 6px 0 6px 12px; }
 html.kb #kb-done { display: block; }
@@ -930,6 +932,25 @@ html.kb .save-row { padding-bottom: 10px; }
     document.addEventListener('focusin', e => { if (inAdd(e.target)) set(true); });
     document.addEventListener('focusout', () => setTimeout(() => { if (!inAdd(document.activeElement)) set(false); }, 60));
     if (vv) { vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); }
+    // While the keyboard is open iOS lets a finger pan the whole page under it; we move the app with the visual viewport,
+    // so that pan looked like scrolling in reverse. Block it: only the add screen itself may scroll,
+    // and a downward swipe from its top closes the keyboard.
+    const scroller = $('#view-add');
+    let t = null;
+    document.addEventListener('touchstart', e => {
+      t = root.classList.contains('kb') && e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, top: scroller.scrollTop } : null;
+    }, { passive: true });
+    document.addEventListener('touchmove', e => {
+      if (!t || !root.classList.contains('kb')) return;
+      const dx = e.touches[0].clientX - t.x, dy = e.touches[0].clientY - t.y;
+      const ta = e.target.closest && e.target.closest('textarea');
+      if (ta && ta.scrollHeight > ta.clientHeight + 1) return;                // long text: let the field scroll itself
+      if (dy > 40 && dy > Math.abs(dx) * 1.5 && t.top <= 0 && scroller.scrollTop <= 0) { e.preventDefault(); t = null; hide(); return; }
+      const max = scroller.scrollHeight - scroller.clientHeight;
+      const atTop = scroller.scrollTop <= 0, atEnd = scroller.scrollTop >= max - 1;
+      if (max <= 1 || (dy > 0 && atTop) || (dy < 0 && atEnd)) e.preventDefault();   // nothing of ours to scroll → don't pan the page
+    }, { passive: false });
+    document.addEventListener('touchend', () => { t = null; }, { passive: true });
   })();
 
   // ---------- list ----------

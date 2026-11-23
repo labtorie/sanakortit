@@ -9,14 +9,68 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Sanakortit">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>
+/* Crash reporter. Runs first, plain ES5 so it works even in old WebViews where the app itself can't start.
+   Reports go to ntfy.sh/<topic> (no account needed; open https://ntfy.sh/sk-b2178c301124c7fa or the ntfy app to read them).
+   Contents: error text/stack, browser/WebView, Telegram platform+version, screen size. No words, no Telegram user data. */
+(function () {
+  var URL_ = 'https://ntfy.sh/sk-b2178c301124c7fa', VER = '2026-11-23b', LOGK = 'sanakortit.log.v1';
+  var sent = 0, seen = {}, t0 = Date.now();
+  function env() {
+    var tg = window.Telegram && window.Telegram.WebApp;
+    return 'ver ' + VER + '\n' + navigator.userAgent + '\ntg: ' + (tg ? (tg.platform + ' ' + tg.version + (tg.initData ? '' : ' (no initData)')) : 'none') +
+      '\nscreen ' + window.innerWidth + 'x' + window.innerHeight + ' · ' + document.readyState + ' · ' + Math.round((Date.now() - t0) / 1000) + 's';
+  }
+  function log(line) {
+    try { var a = JSON.parse(localStorage.getItem(LOGK) || '[]'); a.push(new Date().toISOString().slice(5, 19) + ' ' + line); if (a.length > 80) a = a.slice(-80); localStorage.setItem(LOGK, JSON.stringify(a)); } catch (e) {}
+  }
+  function report(kind, msg, force) {
+    msg = String(msg || '').slice(0, 3000); log(kind + ': ' + msg.split('\n')[0]);
+    if (!force && (seen[kind + msg] || sent >= 6)) return; seen[kind + msg] = 1; sent++;
+    try {
+      var x = new XMLHttpRequest();
+      x.open('POST', URL_ + '?title=' + encodeURIComponent('Sanakortit · ' + kind) + '&tags=' + (kind === 'manual' ? 'memo' : 'warning'), true);
+      x.send(msg + '\n\n' + env());
+    } catch (e) {}
+  }
+  window.__report = report; window.__log = log; window.__env = env;
+  window.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t !== window && (t.src || t.href)) report('resource', 'failed to load ' + (t.src || t.href));
+    else report('error', (e.message || 'error') + '\n@ ' + (e.filename || '?') + ':' + e.lineno + ':' + e.colno + (e.error && e.error.stack ? '\n' + e.error.stack : ''));
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e.reason; report('promise', r && r.stack ? r.stack : String(r));
+  });
+  // watchdog: the app sets window.__booted at the end of its script
+  function fallback() {
+    if (window.__booted || document.getElementById('boot-fail')) return;
+    var d = document.createElement('div'); d.id = 'boot-fail';
+    d.style.cssText = 'position:fixed;inset:0;z-index:99;background:#EDF1F5;color:#142233;font:15px/1.45 -apple-system,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center';
+    d.innerHTML = '<b style="font-size:18px">Приложение не загрузилось</b><span style="color:#5B6B7D">Мы уже получили отчёт об этом.<br>Попробуй перезапустить.</span>';
+    var b = document.createElement('button'); b.textContent = 'Перезагрузить';
+    b.style.cssText = 'border:0;border-radius:14px;padding:13px 22px;font:600 15px system-ui,sans-serif;background:#E08A1E;color:#1A1206';
+    b.onclick = function () { location.reload(); };
+    d.appendChild(b); (document.body || document.documentElement).appendChild(d);
+  }
+  setTimeout(function () {
+    if (window.__booted) return;
+    var res = '';
+    try { var r = performance.getEntriesByType('resource'); for (var i = 0; i < r.length; i++) res += '\n  ' + Math.round(r[i].duration) + 'ms ' + r[i].name.slice(0, 90); } catch (e) {}
+    report('boot-timeout', 'app did not start in 8s\nTelegram object: ' + !!window.Telegram + '\nloaded:' + (res || ' (none)'));
+    fallback();
+  }, 8000);
+  window.__bootOk = function () { window.__booted = true; var d = document.getElementById('boot-fail'); if (d) d.parentNode.removeChild(d); if (Date.now() - t0 > 8000) report('slow-boot', 'started after ' + Math.round((Date.now() - t0) / 1000) + 's'); };
+})();
+</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
-<script src="https://telegram.org/js/telegram-web-app.js?59"></script>
+<script src="telegram-web-app.js?59"></script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Sanakortit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
 <style>
 /* Layout: one-screen phone app — stats strip, card stage, bottom tab bar. Lake-night ink, snow ground, cloudberry accent. */
 :root {
@@ -158,7 +212,11 @@ main { flex: 1; min-height: 0; position: relative; }
 #view-add { padding-bottom: 0; }
 .save-row { position: sticky; bottom: 0; margin-top: auto; padding-block: 10px max(12px, env(safe-area-inset-bottom, 0px)); background: var(--bg); }
 /* keyboard open on the add screen: give the fields all the room */
-html.kb .top, html.kb .tabs, html.kb .add-title { display: none; }
+html.kb .top, html.kb .tabs { display: none; }
+.add-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+#kb-done { display: none; font-size: .82rem; padding: 6px 0 6px 12px; }
+html.kb #kb-done { display: block; }
+html.kb .add-head h2 { font-size: 1.05rem; }
 html.kb .app { position: fixed; left: 0; right: 0; top: var(--vv-top, 0px); height: var(--vv-h, 100%); }
 html.kb .form { gap: 10px; padding-top: 10px; }
 html.kb .save-row { padding-bottom: 10px; }
@@ -283,7 +341,7 @@ html.kb .save-row { padding-bottom: 10px; }
 
     <section class="view" id="view-add" hidden>
       <form class="form" id="add-form" autocomplete="off">
-        <h2 class="add-title">Новая карточка</h2>
+        <div class="add-head"><h2>Новая карточка</h2><button type="button" class="linkbtn" id="kb-done">Готово</button></div>
         <div class="seg" id="type-seg" role="group" aria-label="Тип">
           <button type="button" data-t="word" aria-pressed="true">Слово</button>
           <button type="button" data-t="phrase" aria-pressed="false">Фраза / предложение</button>
@@ -295,7 +353,7 @@ html.kb .save-row { padding-bottom: 10px; }
         </div>
         <div class="field">
           <label for="add-dst"><span id="dst-label">Перевод</span><button type="button" class="linkbtn" id="retranslate">Перевести</button></label>
-          <div class="clr-wrap"><textarea id="add-dst" rows="1" placeholder="подтянется автоматически, можно править" enterkeyhint="done"></textarea><button type="button" class="clr" aria-label="Очистить" tabindex="-1" hidden><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7"/></svg></button></div>
+          <div class="clr-wrap"><textarea id="add-dst" rows="1" placeholder="подтянется сам, можно править" enterkeyhint="done"></textarea><button type="button" class="clr" aria-label="Очистить" tabindex="-1" hidden><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7"/></svg></button></div>
           <div class="status" id="tr-status"></div>
         </div>
         <div class="row-btns save-row"><button class="btn" id="save-btn" type="submit" disabled>Сохранить карточку</button></div>
@@ -490,7 +548,7 @@ html.kb .save-row { padding-bottom: 10px; }
       setSync('ok');
     }).catch(e => {
       lastChunks = lastChunks.slice(); lastChunks.dn = false;   // force a full re-check next time
-      setSync('error', e.message);
+      setSync('error', e.message); if (window.__report) window.__report('sync-save', e.message);
       retryT = setTimeout(cloudSave, 15000);
     });
     return saving;
@@ -534,7 +592,7 @@ html.kb .save-row { padding-bottom: 10px; }
       else { setDirty(false); setSync('ok'); }
       refreshAll(false);
     } catch (e) {
-      setSync('error', e.message);
+      setSync('error', e.message); if (window.__report) window.__report('sync-load', e.message);
       retryT = setTimeout(connectCloud, 10000);
     }
   }
@@ -857,7 +915,14 @@ html.kb .save-row { padding-bottom: 10px; }
     const touch = matchMedia('(pointer: coarse)').matches, root = document.documentElement, vv = window.visualViewport;
     if (!touch) return;
     const fit = () => { if (!vv) return; root.style.setProperty('--vv-h', vv.height + 'px'); root.style.setProperty('--vv-top', vv.offsetTop + 'px'); };
-    const set = on => { root.classList.toggle('kb', on); fit(); if (on) window.scrollTo(0, 0); autoGrow(src); autoGrow(dst); };
+    const hide = () => { const a = document.activeElement; if (a && a.blur) a.blur(); };
+    const set = on => {
+      if (on === root.classList.contains('kb')) return;
+      root.classList.toggle('kb', on); fit(); if (on) window.scrollTo(0, 0); autoGrow(src); autoGrow(dst);
+      if (on) pushBack(hide); else popBack(hide);   // Telegram back button closes the keyboard
+    };
+    $('#kb-done').addEventListener('pointerdown', e => e.preventDefault());
+    $('#kb-done').addEventListener('click', () => { H.tick(); hide(); });
     const inAdd = el => el && el.closest && el.closest('#view-add') && el.matches('textarea, input');
     document.addEventListener('focusin', e => { if (inAdd(e.target)) set(true); });
     document.addEventListener('focusout', () => setTimeout(() => { if (!inAdd(document.activeElement)) set(false); }, 60));
@@ -1213,6 +1278,27 @@ html.kb .save-row { padding-bottom: 10px; }
   }
 
   // ---------- navigation & prefs ----------
+  // hidden debug sheet: tap the logo 5 times
+  let logoTaps = 0, logoT = null;
+  $('.brand h1').addEventListener('click', () => {
+    clearTimeout(logoT); logoT = setTimeout(() => logoTaps = 0, 1500);
+    if (++logoTaps < 5) return; logoTaps = 0; openDebug();
+  });
+  function openDebug() {
+    let lines = []; try { lines = JSON.parse(localStorage.getItem('sanakortit.log.v1') || '[]'); } catch {}
+    const text = (window.__env ? window.__env() : navigator.userAgent) + '\ncards ' + S.cards.length + ' · sync ' + sync.state + (sync.err ? ' (' + sync.err + ')' : '') + '\n\n' + (lines.join('\n') || 'журнал пуст');
+    const scrim = document.createElement('div'); scrim.className = 'scrim';
+    const sh = document.createElement('div'); sh.className = 'sheet'; sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-label', 'Отладка');
+    sh.innerHTML = '<div class="form"><h2>Отладка</h2><div class="field"><textarea class="mono" rows="12" readonly></textarea></div><div class="row-btns"><button class="btn" type="button" data-a="send">Отправить отчёт</button><button class="btn ghost-btn" type="button" data-a="close">Закрыть</button></div></div>';
+    sh.querySelector('textarea').value = text;
+    scrim.append(sh); document.body.append(scrim);
+    const close = () => { scrim.remove(); popBack(close); };
+    pushBack(close);
+    scrim.addEventListener('click', e => { if (e.target === scrim) close(); });
+    sh.querySelector('[data-a=close]').onclick = close;
+    sh.querySelector('[data-a=send]').onclick = () => { if (window.__report) window.__report('manual', text, true); H.saved(); toast('Отчёт отправлен'); close(); };
+  }
+
   let view = 'study';
   function go(v) {
     if (v !== view) H.tick();
@@ -1222,7 +1308,7 @@ html.kb .save-row { padding-bottom: 10px; }
     if (v === 'list') renderList();
     if (v === 'study') renderStudy(false);
     if (v === 'quiz') { if (!Q || Q.answered !== null || !S.cards.some(x => x.id === Q.id)) newQuestion(); else renderQuiz(false); }
-    if (v === 'add') setTimeout(() => src.focus(), 50);
+    if (v === 'add' && !matchMedia('(pointer: coarse)').matches) setTimeout(() => src.focus(), 50);   // on phones don't pop the keyboard (and hide the tabs) on arrival
   }
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => go(b.dataset.view)));
   function syncSeg() {
@@ -1264,6 +1350,7 @@ html.kb .save-row { padding-bottom: 10px; }
   renderSync();
   syncSeg(); renderToday(); refreshAll(true);
   connectCloud();
+  if (window.__bootOk) window.__bootOk();
 })();
 </script>
 

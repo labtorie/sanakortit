@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#EDF1F5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0C141E" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -33,6 +33,9 @@
       x.send(msg + '\n\n' + env());
     } catch (e) {}
   }
+  // no pinch / double-tap zoom (iOS Safari ignores user-scalable=no, so block the gestures too)
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (t) { document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false }); });
+  document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
   window.__report = report; window.__log = log; window.__env = env;
   window.addEventListener('error', function (e) {
     var t = e.target;
@@ -67,7 +70,7 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
 <script src="telegram-web-app.js?59"></script>
-<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}html,body{touch-action:pan-x pan-y}button,a,label{touch-action:manipulation}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Sanakortit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&display=swap" media="print" onload="this.media='all'">

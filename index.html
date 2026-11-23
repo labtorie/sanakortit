@@ -141,6 +141,27 @@ main { flex: 1; min-height: 0; position: relative; }
 .linkbtn { border: 0; background: none; color: var(--accent); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 0; }
 .status { font-size: .8rem; color: var(--muted); min-height: 1.2em; }
 .status.err { color: var(--bad); }
+.clr-wrap { position: relative; }
+.clr-wrap > textarea, .clr-wrap > input { padding-right: 44px; }
+.clr-wrap input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.clr { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--muted); display: grid; place-items: center; padding: 0; }
+.clr::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--surface-2); z-index: -1; }
+.clr { z-index: 0; isolation: isolate; }
+.clr[hidden] { display: none; }
+.dup { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); font-size: .86rem; line-height: 1.35; }
+.dup[hidden] { display: none; }
+.dup .t { flex: 1; min-width: 0; }
+.dup .t b { font-weight: 600; }
+.dup .t small { display: block; color: var(--muted); font-size: .76rem; margin-top: 2px; }
+.dup button { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: .82rem; padding: 4px 2px; white-space: nowrap; }
+#view-add .form { min-height: 100%; }
+#view-add { padding-bottom: 0; }
+.save-row { position: sticky; bottom: 0; margin-top: auto; padding-block: 10px max(12px, env(safe-area-inset-bottom, 0px)); background: var(--bg); }
+/* keyboard open on the add screen: give the fields all the room */
+html.kb .top, html.kb .tabs, html.kb .add-title { display: none; }
+html.kb .app { position: fixed; left: 0; right: 0; top: var(--vv-top, 0px); height: var(--vv-h, 100%); }
+html.kb .form { gap: 10px; padding-top: 10px; }
+html.kb .save-row { padding-bottom: 10px; }
 .row-btns { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .row-btns .btn:first-child { flex: 1; }
 
@@ -262,27 +283,28 @@ main { flex: 1; min-height: 0; position: relative; }
 
     <section class="view" id="view-add" hidden>
       <form class="form" id="add-form" autocomplete="off">
-        <h2>Новая карточка</h2>
+        <h2 class="add-title">Новая карточка</h2>
         <div class="seg" id="type-seg" role="group" aria-label="Тип">
           <button type="button" data-t="word" aria-pressed="true">Слово</button>
           <button type="button" data-t="phrase" aria-pressed="false">Фраза / предложение</button>
         </div>
         <div class="field">
           <label for="add-src"><span id="src-label">По-фински</span><button type="button" class="linkbtn" id="swap-lang">Пишу по-русски ⇄</button></label>
-          <textarea id="add-src" class="big" rows="2" placeholder="например, ystävä" autocapitalize="off" spellcheck="false"></textarea>
+          <div class="clr-wrap"><textarea id="add-src" class="big" rows="1" placeholder="например, ystävä" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next"></textarea><button type="button" class="clr" aria-label="Очистить" tabindex="-1" hidden><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7"/></svg></button></div>
+          <div class="dup" id="dup-hint" hidden></div>
         </div>
         <div class="field">
           <label for="add-dst"><span id="dst-label">Перевод</span><button type="button" class="linkbtn" id="retranslate">Перевести</button></label>
-          <textarea id="add-dst" rows="2" placeholder="подтянется автоматически, можно править"></textarea>
+          <div class="clr-wrap"><textarea id="add-dst" rows="1" placeholder="подтянется автоматически, можно править" enterkeyhint="done"></textarea><button type="button" class="clr" aria-label="Очистить" tabindex="-1" hidden><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7"/></svg></button></div>
           <div class="status" id="tr-status"></div>
         </div>
-        <div class="row-btns"><button class="btn" id="save-btn" type="submit" disabled>Сохранить карточку</button></div>
+        <div class="row-btns save-row"><button class="btn" id="save-btn" type="submit" disabled>Сохранить карточку</button></div>
       </form>
     </section>
 
     <section class="view" id="view-list" hidden>
       <div class="list-head">
-        <div class="field"><input id="search" type="search" placeholder="Поиск по словам" aria-label="Поиск"></div>
+        <div class="field"><div class="clr-wrap"><input id="search" type="search" placeholder="Поиск по словам" aria-label="Поиск"><button type="button" class="clr" aria-label="Очистить" tabindex="-1" hidden><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7"/></svg></button></div></div>
       </div>
       <div class="list-tools">
         <div class="seg" id="sort-seg" role="group" aria-label="Сортировка">
@@ -720,8 +742,34 @@ main { flex: 1; min-height: 0; position: relative; }
   const src = $('#add-src'), dst = $('#add-dst'), status = $('#tr-status'), saveBtn = $('#save-btn');
   let addType = 'word', typeTouched = false, writeFi = true, dstEdited = false, trTimer = null, trSeq = 0;
   function setType(t) { addType = t; document.querySelectorAll('#type-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t))); }
-  function updateSave() { saveBtn.disabled = !(src.value.trim() && dst.value.trim()); }
-  function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight + 2, 200) + 'px'; }
+  const normW = t => t.toLowerCase().normalize('NFC').replace(/[.!?…,;:"«»„“”()]+/g, ' ').replace(/\s+/g, ' ').trim();
+  let dupCard = null;
+  function findDup() {
+    const s = normW(src.value), d = normW(dst.value);
+    const fi = writeFi ? s : d;
+    if (fi) { const c = S.cards.find(c => normW(c.fi) === fi); if (c) return c; }
+    if (!writeFi && s) return S.cards.find(c => normW(c.ru) === s || c.ru.split(/[,;/]/).some(x => normW(x) === s)) || null;
+    return null;
+  }
+  function updateDup() {
+    dupCard = src.value.trim() ? findDup() : null;
+    const box = $('#dup-hint');
+    if (!dupCard) { box.hidden = true; box.innerHTML = ''; }
+    else {
+      box.hidden = false; box.innerHTML = '';
+      const t = document.createElement('div'); t.className = 't';
+      const b = document.createElement('b'); b.textContent = dupCard.fi;
+      const sm = document.createElement('small'); sm.textContent = 'Сохранение заменит перевод и тип, прогресс останется';
+      t.append('Уже есть: ', b, ' — ' + dupCard.ru, sm);
+      const open = document.createElement('button'); open.type = 'button'; open.textContent = 'Открыть';
+      const id = dupCard.id; open.onclick = () => openEdit(id);
+      box.append(t, open);
+    }
+    saveBtn.textContent = dupCard ? 'Заменить карточку' : 'Сохранить карточку';
+  }
+  function syncClr() { document.querySelectorAll('.clr-wrap').forEach(w => { const f = w.querySelector('textarea, input'); w.querySelector('.clr').hidden = !f.value; }); }
+  function updateSave() { saveBtn.disabled = !(src.value.trim() && dst.value.trim()); updateDup(); syncClr(); }
+  function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight + 2, document.documentElement.classList.contains('kb') ? 130 : 200) + 'px'; }
 
   async function translate(text, from, to) {
     // 1) MyMemory (free, no key)
@@ -752,6 +800,8 @@ main { flex: 1; min-height: 0; position: relative; }
     if (!text) { status.textContent = ''; return; }
     if (dstEdited && !force) return;
     const seq = ++trSeq;
+    const own = !force && findDup();
+    if (own) { dst.value = writeFi ? own.ru : own.fi; dstEdited = false; autoGrow(dst); updateSave(); status.className = 'status'; status.textContent = 'Перевод из твоей карточки · можно поправить'; return; }
     status.className = 'status'; status.textContent = 'Перевожу…';
     try {
       const r = await translate(text, writeFi ? 'fi' : 'ru', writeFi ? 'ru' : 'fi');
@@ -767,7 +817,7 @@ main { flex: 1; min-height: 0; position: relative; }
   src.addEventListener('input', () => {
     autoGrow(src); updateSave();
     if (!typeTouched) setType(/\s/.test(src.value.trim()) ? 'phrase' : 'word');
-    clearTimeout(trTimer); if (!src.value.trim()) { status.textContent = ''; if (!dstEdited) dst.value = ''; return; }
+    clearTimeout(trTimer); if (!src.value.trim()) { status.textContent = ''; if (!dstEdited) { dst.value = ''; autoGrow(dst); } updateSave(); return; }
     trTimer = setTimeout(() => runTranslate(false), 700);
   });
   dst.addEventListener('input', () => { dstEdited = !!dst.value.trim(); autoGrow(dst); updateSave(); });
@@ -785,14 +835,34 @@ main { flex: 1; min-height: 0; position: relative; }
     e.preventDefault();
     const s = src.value.trim(), d = dst.value.trim(); if (!s || !d) return;
     const fi = writeFi ? s : d, ru = writeFi ? d : s;
-    const dup = S.cards.find(c => c.fi.toLowerCase() === fi.toLowerCase());
-    if (dup && saveBtn.dataset.confirm !== '1') { saveBtn.dataset.confirm = '1'; saveBtn.textContent = 'Уже есть «' + dup.ru + '». Всё равно добавить?'; return; }
-    putCard(newCard(fi, ru, addType));
+    const dup = findDup();
+    if (dup) putCard(Object.assign({}, dup, { fi, ru, type: addType }));
+    else putCard(newCard(fi, ru, addType));
     src.value = ''; dst.value = ''; dstEdited = false; typeTouched = false; setType('word'); status.textContent = '';
-    saveBtn.dataset.confirm = ''; saveBtn.textContent = 'Сохранить карточку'; autoGrow(src); autoGrow(dst); updateSave();
-    refreshAll(false); H.saved(); toast('Добавлено: ' + fi); src.focus();
+    autoGrow(src); autoGrow(dst); updateSave();
+    refreshAll(false); H.saved(); toast((dup ? 'Обновлено: ' : 'Добавлено: ') + fi); src.focus();
   });
-  src.addEventListener('input', () => { if (saveBtn.dataset.confirm) { saveBtn.dataset.confirm = ''; saveBtn.textContent = 'Сохранить карточку'; } });
+  // Enter: word field → translation field, translation field → save (Shift+Enter = new line)
+  src.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); dst.focus(); dst.setSelectionRange(dst.value.length, dst.value.length); } });
+  dst.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (!saveBtn.disabled) $('#add-form').requestSubmit(); } });
+  // clear buttons: keep focus (and the keyboard) in the field
+  document.querySelectorAll('.clr-wrap').forEach(w => {
+    const f = w.querySelector('textarea, input'), b = w.querySelector('.clr');
+    b.addEventListener('pointerdown', e => e.preventDefault());
+    b.addEventListener('click', () => { H.tick(); f.value = ''; f.dispatchEvent(new Event('input', { bubbles: true })); f.focus(); });
+    f.addEventListener('input', () => { b.hidden = !f.value; });
+  });
+  // on-screen keyboard: on touch devices hide header/tabs while typing on the add screen and fit the app to the visible area
+  (() => {
+    const touch = matchMedia('(pointer: coarse)').matches, root = document.documentElement, vv = window.visualViewport;
+    if (!touch) return;
+    const fit = () => { if (!vv) return; root.style.setProperty('--vv-h', vv.height + 'px'); root.style.setProperty('--vv-top', vv.offsetTop + 'px'); };
+    const set = on => { root.classList.toggle('kb', on); fit(); if (on) window.scrollTo(0, 0); autoGrow(src); autoGrow(dst); };
+    const inAdd = el => el && el.closest && el.closest('#view-add') && el.matches('textarea, input');
+    document.addEventListener('focusin', e => { if (inAdd(e.target)) set(true); });
+    document.addEventListener('focusout', () => setTimeout(() => { if (!inAdd(document.activeElement)) set(false); }, 60));
+    if (vv) { vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); }
+  })();
 
   // ---------- list ----------
   // 3 dots: green = card streak, then blue = quiz streak beyond it (one card guess outweighs one quiz guess), grey = rest
@@ -1185,6 +1255,7 @@ main { flex: 1; min-height: 0; position: relative; }
     // skip re-rendering the card when nothing visible changed (e.g. our own write echoing back) or while dragging
     if (view === 'study' && !busy && !document.querySelector('.swipe[data-drag="1"]') && sigOf() !== shownSig) renderStudy(enter);
     if (view === 'list') renderList();
+    if (view === 'add') updateDup();
     // quiz: keep the open question unless its card (or an option) disappeared
     if (view === 'quiz' && (!Q || !Q.opts.every(id => S.cards.some(x => x.id === id)))) newQuestion();
   }
